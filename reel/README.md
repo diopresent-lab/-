@@ -5,6 +5,8 @@
 
 > 배경: @diopresent.official 최근 30일 릴스는 **첫 3초 이탈 80%, 평균 시청 4.3초**였습니다.
 > 그래서 이 도구는 훅을 0초 첫 프레임부터 바로 보여주고(빈 화면 없음), 훅이 3초를 넘으면 설정 오류로 막습니다.
+> 가장 잘 된 릴스는 "친구 한 명 떠올려 보세요" 훅이었고 주 시청층은 35~54세 남성이라, 기본 훅과 변형도 그 방향으로 넣었습니다.
+> 훅이 떠 있는 동안에는 머리글을 숨기고 강조 단어를 형광 박스로 칠해, 첫 프레임에 훅 하나만 보이게 합니다. 훅이 20자를 넘으면 경고합니다.
 
 ## 준비
 
@@ -27,6 +29,18 @@ python3 reel/make_reel.py reel/configs/example.json
 python3 reel/make_reel.py reel/configs/example.json -o reels_out/이번주.mp4
 ```
 
+### 훅 변형 (A/B 테스트)
+
+```bash
+python3 reel/make_reel.py reel/configs/example.json --list-hooks          # 설정에 든 훅 목록
+python3 reel/make_reel.py reel/configs/example.json --hook contrast        # 변형 하나로 렌더
+python3 reel/make_reel.py reel/configs/example.json --all-hooks           # 모든 변형 → 파일명_hook-이름.mp4
+python3 reel/make_reel.py reel/configs/example.json --all-hooks --preview 0,1.5
+python3 reel/make_reel.py reel/configs/example.json --hook-text "[친구 한 명]\n떠올려 보세요" --hook-sub "보조 문구"
+```
+
+같은 본편에 훅만 바꾼 영상을 며칠 간격으로 올리고, 3초 이탈률을 `tools/insta_report.py`로 비교하세요.
+
 새 릴스는 `reel/configs/example.json`을 복사해 `reel/configs/2026-11-29_곡제목.json`처럼 저장하고 내용을 바꾸면 됩니다.
 출력 기본 폴더 `reels_out/`은 git에 올라가지 않습니다. 올릴 완성본만 날짜 폴더(예: `reels_2026-11-21/`)로 옮겨 커밋하세요.
 
@@ -39,7 +53,12 @@ python3 reel/make_reel.py reel/configs/example.json -o reels_out/이번주.mp4
 | `tag` | | 화면 위쪽 작은 머리글 (예: `DIO PRESENT · 건축과 음악 사이`) |
 | `hook.text` | ✅ | 첫 화면 훅 문구. 0초부터 바로 보입니다 |
 | `hook.end` | | 훅이 사라지는 시점. 기본 3.0, **3초를 넘기면 오류** |
-| `hook.size` | | 글자 크기(px). 기본 104, 두 줄 문장은 80~90 권장 |
+| `hook.size` | | 최대 글자 크기(px). 기본 120, 줄이 화면을 넘으면 64까지 자동으로 줄임 |
+| `hook.sub` | | 훅 아래 작은 보조 문구 (예: `그 친구한테 보내줄 영상입니다`) |
+| `hook.name` | | 기본 훅의 이름. 기본 `main` |
+| `hook.variants[]` | | `{name, text, sub?, size?, end?}` 훅 변형 목록. `--hook 이름`, `--all-hooks`로 선택 |
+| `hook.style` | | `box`(기본, 강조 단어를 형광 박스로) 또는 `plain`(강조색 글자만) |
+| `hook.progress_bar` | | 기본 `true`. 훅 동안 화면 맨 위에 차오르는 진행바 |
 | `song.title` | ✅ | 곡 제목. 화면 아래 ♪ 배지로 표시 |
 | `song.artist` | | 아티스트 |
 | `song.audio` | | 음원 파일(mp3/wav/m4a). 없으면 무음 영상 |

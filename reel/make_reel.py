@@ -8,8 +8,13 @@
     python3 reel/make_reel.py reel/configs/example.json -o out.mp4
     python3 reel/make_reel.py reel/configs/example.json --preview 0,3.5,12
     python3 reel/make_reel.py reel/configs/example.json --check
+    python3 reel/make_reel.py reel/configs/example.json --list-hooks
+    python3 reel/make_reel.py reel/configs/example.json --hook friend
+    python3 reel/make_reel.py reel/configs/example.json --all-hooks      # 훅 A/B 테스트용
+    python3 reel/make_reel.py reel/configs/example.json --hook-text "[친구 한 명] 떠올려 보세요"
 """
 import argparse
+import copy
 import json
 import math
 import os
@@ -37,6 +42,10 @@ DEFAULTS = {
 }
 
 HOOK_MAX_END = 3.0
+HOOK_DEFAULT_SIZE = 120   # 훅 기본 글자 크기. 줄이 화면을 넘으면 자동으로 줄인다
+HOOK_MIN_SIZE = 64
+HOOK_MAX_W = 960
+HOOK_KEYS = ("text", "sub", "size", "end")
 FONT_CANDIDATES = {
     "bold": [
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
@@ -99,6 +108,25 @@ def validate(cfg):
             errors.append(f"hook.end={end}초. 훅은 첫 {HOOK_MAX_END:g}초 안에 끝나야 합니다.")
         if end <= 0.5:
             errors.append("hook.end가 너무 짧습니다 (0.5초 초과).")
+        if hook.get("style", "box") not in ("box", "plain"):
+            errors.append("hook.style은 'box' 또는 'plain'입니다.")
+        names = [hook.get("name", "main")]
+        for i, v in enumerate(hook.get("variants", [])):
+            tag = f"hook.variants[{i}]"
+            if not isinstance(v, dict) or not v.get("name") or not v.get("text"):
+                errors.append(f"{tag}: name과 text가 필요합니다.")
+                continue
+            if not re.fullmatch(r"[\w-]+", v["name"]):
+                errors.append(f"{tag}: name '{v['name']}'은 영문·숫자·_·-만 씁니다 (파일 이름에 들어갑니다).")
+            if v["name"] in names:
+                errors.append(f"{tag}: name '{v['name']}'이 중복됩니다.")
+            names.append(v["name"])
+            if float(v.get("end", end)) > HOOK_MAX_END:
+                errors.append(f"{tag}.end: 훅은 첫 {HOOK_MAX_END:g}초 안에 끝나야 합니다.")
+        for name, text in hook_texts(hook):
+            n = len(strip_markup(text).replace("\n", "").replace(" ", ""))
+            if n > 24:
+                warnings.append(f"훅 '{name}'이 {n}자입니다. 3초 안에 읽히려면 20자 안팎이 좋습니다.")
 
     song = cfg.get("song") or {}
     if not song.get("title"):
@@ -133,6 +161,40 @@ def validate(cfg):
     if cfg.get("visual") not in ("equalizer", "none"):
         errors.append("visual은 'equalizer' 또는 'none'입니다.")
     return errors, warnings
+
+
+# ---------------------------------------------------------------- 훅 변형
+
+def hook_texts(hook):
+    yield hook.get("name", "main"), hook["text"]
+    for v in hook.get("variants", []):
+        if isinstance(v, dict) and v.get("name") and v.get("text"):
+            yield v["name"], v["text"]
+
+
+def hook_names(cfg):
+    return [n for n, _ in hook_texts(cfg["hook"])]
+
+
+def with_hook(cfg, name=None, text=None, sub=None):
+    """훅 변형 하나를 골라 cfg['hook']에 덮어쓴 사본을 돌려준다."""
+    out = copy.deepcopy(cfg)
+    hook = out["hook"]
+    if name and name != hook.get("name", "main"):
+        v = next((v for v in hook.get("variants", []) if v.get("name") == name), None)
+        if v is None:
+            raise ConfigError(f"훅 '{name}'이 없습니다. 있는 훅: {', '.join(hook_names(cfg))}")
+        hook.pop("sub", None)
+        hook.pop("size", None)
+        hook.update({k: v[k] for k in HOOK_KEYS if k in v})
+        hook["name"] = name
+    if text:
+        hook.update({"text": text, "name": "custom"})
+        hook.pop("size", None)
+        hook.pop("sub", None)
+    if sub is not None:
+        hook["sub"] = sub
+    return out
 
 
 # ---------------------------------------------------------------- 글꼴·텍스트
@@ -228,6 +290,51 @@ def text_block(draw, fonts, text, size, kind, y_center, colors, W, alpha, dy=0,
     return top + lh * len(lines)
 
 
+def fit_hook_size(fonts, text, size):
+    """명시한 줄(\\n)이 한 줄에 들어가도록 글자 크기를 줄인다."""
+    lines = [strip_markup(l) for l in text.split("\n")]
+    while size > HOOK_MIN_SIZE:
+        font = fonts.get("bold", size)
+        if all(font.getlength(l) + size * 0.25 <= HOOK_MAX_W for l in lines):
+            break
+        size -= 4
+    return size
+
+
+def draw_hook(draw, fonts, hook, theme, W, alpha, y_center=700):
+    """훅 문구. 강조 [단어]는 형광 박스 위 어두운 글자(style=box)로 칠해 첫 프레임에 눈에 띄게 한다."""
+    size = fit_hook_size(fonts, hook["text"], int(hook.get("size", HOOK_DEFAULT_SIZE)))
+    font = fonts.get("bold", size)
+    lines = []
+    for raw in hook["text"].split("\n"):
+        lines += wrap_line(raw, font, HOOK_MAX_W) if raw else [""]
+    lh = int(size * 1.24)
+    sub = hook.get("sub")
+    sub_size = max(40, int(size * 0.4))
+    block_h = lh * len(lines) + (sub_size * 2 if sub else 0)
+    top = y_center - block_h / 2
+    box = hook.get("style", "box") == "box"
+    pad = size * 0.12
+    for i, ln in enumerate(lines):
+        runs = parse_runs(ln)
+        width = sum(font.getlength(t) for t, _ in runs)
+        x = (W - width) / 2
+        y = top + i * lh
+        for t, acc in runs:
+            w = font.getlength(t)
+            if acc and box:
+                bb = font.getbbox(t)
+                draw.rounded_rectangle([x - pad, y + bb[1] - pad, x + w + pad, y + bb[3] + pad],
+                                       radius=size * 0.1, fill=rgba(theme["accent"], alpha))
+                draw.text((x, y), t, font=font, fill=rgba(theme["background"], alpha))
+            else:
+                draw.text((x, y), t, font=font, fill=rgba(theme["accent" if acc else "text"], alpha))
+            x += w
+    if sub:
+        sy = top + lh * len(lines) + sub_size * 0.9
+        draw.text((W / 2, sy), sub, font=fonts.get("bold", sub_size), fill=rgba("#D8D8D0", alpha), anchor="mt")
+
+
 # ---------------------------------------------------------------- 그리기
 
 def rgba(hex_color, alpha=1.0):
@@ -318,14 +425,21 @@ def render_frame(cfg, fonts, t):
     if cfg["visual"] == "equalizer":
         draw_equalizer(d, t, th, W)
 
-    if cfg.get("tag"):
-        d.text((W / 2, 270), cfg["tag"], font=fonts.get("bold", 30), fill=rgba(th["muted"]), anchor="mm")
-
-    # 1) 훅: 첫 프레임부터 바로 보인다 (빈 화면 0초)
     hook = cfg["hook"]
-    a, dy = envelope(t, 0, float(hook.get("end", HOOK_MAX_END)), instant=True)
+    hook_end = float(hook.get("end", HOOK_MAX_END))
+    if cfg.get("tag"):
+        # 훅이 떠 있는 동안 머리글은 숨겨 시선을 훅 하나에 모은다
+        ta = 1.0 if t >= hook_end + 0.4 else ease((t - hook_end) / 0.4)
+        if ta > 0:
+            d.text((W / 2, 270), cfg["tag"], font=fonts.get("bold", 30), fill=rgba(th["muted"], ta), anchor="mm")
+
+    # 1) 훅: 첫 프레임부터 바로 보인다 (빈 화면 0초, 페이드인 없음)
+    a, _ = envelope(t, 0, hook_end, instant=True)
     if a > 0:
-        text_block(d, fonts, hook["text"], int(hook.get("size", 104)), "bold", 700, th, W, a, dy, 1.18)
+        draw_hook(d, fonts, hook, th, W, a)
+        if hook.get("progress_bar", True) and t < hook_end:
+            # 상단 진행바: 훅 시간 동안 차오르며 '조금만 더 보라'는 신호
+            d.rectangle([0, 0, W * t / hook_end, 12], fill=rgba(th["accent"]))
 
     # 2) 자막
     for s in cfg.get("subtitles", []):
@@ -401,23 +515,42 @@ def main(argv=None):
     ap.add_argument("-o", "--output", help="출력 MP4 경로 (기본: 설정의 output)")
     ap.add_argument("--preview", help="이 시점(초)들의 PNG만 저장. 예: 0,3.5,12")
     ap.add_argument("--check", action="store_true", help="설정만 검사하고 끝낸다")
+    ap.add_argument("--list-hooks", action="store_true", help="설정에 있는 훅 변형 목록")
+    ap.add_argument("--hook", help="쓸 훅 변형 이름 (hook.variants[].name)")
+    ap.add_argument("--hook-text", help="설정 대신 이 훅 문구를 쓴다. [강조], \\n 줄바꿈")
+    ap.add_argument("--hook-sub", help="훅 아래 보조 문구")
+    ap.add_argument("--all-hooks", action="store_true",
+                    help="모든 훅 변형을 각각 렌더한다 (출력 이름에 _hook-이름 이 붙음)")
     args = ap.parse_args(argv)
     try:
         cfg = load_config(args.config)
+        if args.list_hooks:
+            for name, text in hook_texts(cfg["hook"]):
+                print(f"{name:12s} {strip_markup(text).replace(chr(10), ' / ')}")
+            return 0
+        if args.hook_text:
+            cfg = with_hook(cfg, text=args.hook_text.replace("\\n", "\n"), sub=args.hook_sub)
+        elif args.hook or args.hook_sub is not None:
+            cfg = with_hook(cfg, name=args.hook, sub=args.hook_sub)
         if args.check:
             print("설정 OK")
             return 0
         fonts = Fonts(cfg["theme"])
         out = args.output or cfg.get("output") or os.path.splitext(args.config)[0] + ".mp4"
-        if args.preview:
-            base = os.path.splitext(out)[0]
-            os.makedirs(os.path.dirname(os.path.abspath(base)), exist_ok=True)
-            for s in args.preview.split(","):
-                p = f"{base}_preview_{float(s):05.2f}s.png"
-                render_frame(cfg, fonts, float(s)).save(p)
-                print("미리보기:", p)
-            return 0
-        encode(cfg, fonts, out)
+        if args.all_hooks:
+            jobs = [(with_hook(cfg, name=n), f"{os.path.splitext(out)[0]}_hook-{n}.mp4") for n in hook_names(cfg)]
+        else:
+            jobs = [(cfg, out)]
+        for c, o in jobs:
+            if args.preview:
+                base = os.path.splitext(o)[0]
+                os.makedirs(os.path.dirname(os.path.abspath(base)), exist_ok=True)
+                for s in args.preview.split(","):
+                    p = f"{base}_preview_{float(s):05.2f}s.png"
+                    render_frame(c, fonts, float(s)).save(p)
+                    print("미리보기:", p)
+            else:
+                encode(c, fonts, o)
         return 0
     except ConfigError as e:
         print("설정 오류:\n" + str(e), file=sys.stderr)
