@@ -1,0 +1,35 @@
+{
+  "output": "reels_out/건축과음악사이_v2.mp4",
+  "duration": 15,
+  "fps": 30,
+  "tag": "DIO PRESENT · 건축과 음악 사이",
+
+  "hook": {
+    "text": "낮에는 [도면]을 그리고\n밤에는 [노래]를 짓습니다",
+    "end": 3.0,
+    "size": 86
+  },
+
+  "song": {
+    "title": "읽씹 금지",
+    "artist": "TIAND(띠앙드)",
+    "audio": null,
+    "audio_start": 0,
+    "show_from": 0
+  },
+
+  "subtitles": [
+    { "start": 3.0, "end": 6.4, "text": "설계하듯\n곡을 짓는 건축사" },
+    { "start": 6.4, "end": 10.6, "text": "기초 = [비트]\n구조 = [멜로디]\n마감 = [가사]", "line_gap": 1.55 }
+  ],
+
+  "cta": {
+    "start": 10.6,
+    "title": "건축과 음악 사이",
+    "text": "다음 곡, [먼저] 들어볼래요?",
+    "sub": "팔로우 → @diopresent.official"
+  },
+
+  "visual": "equalizer",
+  "silent_audio_track": false
+}
