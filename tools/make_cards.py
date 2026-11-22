@@ -1,7 +1,11 @@
 import os, sys, base64
 from playwright.sync_api import sync_playwright
 
+if len(sys.argv) < 2:
+    sys.exit("usage: python3 tools/make_cards.py <output_dir> [logo.png]")
 OUT = sys.argv[1]
+# Set CHROME_PATH to use a specific Chrome/Chromium; otherwise Playwright's bundled browser is used.
+CHROME = os.environ.get("CHROME_PATH")
 LOGO = sys.argv[2] if len(sys.argv) > 2 else ""
 os.makedirs(OUT, exist_ok=True)
 DATE = "11.20"
@@ -125,7 +129,7 @@ for n,name,chip,h,lead,facts,src in CARDS:
     pages.append((f"{n}_{name}", page(body, n)))
 
 with sync_playwright() as p:
-    b = p.chromium.launch(executable_path="/usr/bin/google-chrome", args=["--no-sandbox"])
+    b = p.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
     pg = b.new_page(viewport={"width":1080,"height":1350})
     for fn, html in pages:
         pg.set_content(html); pg.wait_for_timeout(300)

@@ -1,15 +1,18 @@
-import os, sys, subprocess
+import os, sys, shutil, subprocess, tempfile
 from playwright.sync_api import sync_playwright
 
+if len(sys.argv) < 2:
+    sys.exit("usage: python3 tools/make_reel.py <output.mp4>")
 OUT = sys.argv[1]
 FPS, DUR = 30, 15.0
-FR = "/tmp/claude-0/-home-user--/d4ee4bea-1114-50e4-8f6e-4bbf4a2d80a7/scratchpad/reel/frames"
-os.makedirs(FR, exist_ok=True)
+FR = tempfile.mkdtemp(prefix="reel_frames_")
+# Set CHROME_PATH to use a specific Chrome/Chromium; otherwise Playwright's bundled browser is used.
+CHROME = os.environ.get("CHROME_PATH")
 
 HTML = r"""
 <html><head><meta charset='utf-8'><style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{width:1080px;height:1920px;background:#121212;color:#F5F5F0;font-family:'Noto Sans CJK KR';word-break:keep-all;overflow:hidden}
+body{width:1080px;height:1920px;background:#121212;color:#F5F5F0;font-family:'Noto Sans CJK KR','Noto Sans KR','Malgun Gothic',sans-serif;word-break:keep-all;overflow:hidden}
 .s{position:absolute;left:0;right:0;text-align:center;opacity:0}
 .big{font-size:104px;font-weight:900;line-height:1.18}
 .mid{font-size:70px;font-weight:800;line-height:1.3}
@@ -66,7 +69,7 @@ function draw(t){
 
 n = int(FPS * DUR)
 with sync_playwright() as p:
-    b = p.chromium.launch(executable_path="/usr/bin/google-chrome", args=["--no-sandbox"])
+    b = p.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
     pg = b.new_page(viewport={"width": 1080, "height": 1920})
     pg.set_content(HTML); pg.wait_for_timeout(500)
     for i in range(n):
@@ -75,4 +78,5 @@ with sync_playwright() as p:
     b.close()
 subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(FPS), "-i", f"{FR}/f%04d.png",
                 "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18", "-movflags", "+faststart", OUT], check=True)
+shutil.rmtree(FR, ignore_errors=True)
 print("done", OUT)
