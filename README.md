@@ -1,3 +1,36 @@
 # DIO Present Instagram
 
 DIO Present 인스타그램 카드뉴스 작업물과 제작 도구.
+
+## 릴스 업로드 자동화 (`tools/ig_upload`)
+
+Instagram Graph API(비즈니스·크리에이터 계정)로 릴스 영상과 캡션을 올립니다.
+
+### 준비
+1. 계정마다 Facebook 페이지에 연결된 Instagram 비즈니스/크리에이터 계정과,
+   `instagram_basic`, `instagram_content_publish`, `pages_read_engagement` 권한이 있는 장기 액세스 토큰이 필요합니다.
+2. 계정 목록은 `config/ig_accounts.json` 에 있습니다 (현재 `diopresent`, `aimusic_chart`). 비밀값은 넣지 않습니다.
+3. 토큰과 IG 사용자 ID는 환경변수로 넣습니다. 형식은 `.env.example` 참고:
+   `IG_<계정키 대문자>_ACCESS_TOKEN`, `IG_<계정키 대문자>_USER_ID`
+4. `pip install -r requirements.txt`
+
+### 사용법
+```bash
+# 실제 업로드 없이 검증과 요청 계획만 확인
+python -m tools.ig_upload --account aimusic_chart \
+  --video reels_2026-11-21/건축과음악사이_릴스.mp4 --caption-file caption.txt --dry-run
+
+# 실제 업로드 (여러 계정: --account 반복, 또는 --all)
+python -m tools.ig_upload --account diopresent --account aimusic_chart --video reel.mp4 --caption "캡션 #해시태그"
+```
+옵션: `--video-url`(공개 https 주소), `--no-feed`(피드 공유 안 함), `--cover-url`, `--thumb-offset-ms`.
+
+업로드 전 확인 항목: mp4/mov, 300MB 이하, 캡션 2200자·해시태그 30개·멘션 20개 이하.
+
+### 계정 추가
+`config/ig_accounts.json` 의 `accounts` 에 키를 하나 추가하고 해당 환경변수 두 개를 설정하면 됩니다.
+
+### 테스트
+```bash
+python -m pytest -q tests
+```
