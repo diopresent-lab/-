@@ -1,0 +1,42 @@
+name: weekly-report (@tiand_official)
+
+# 매주 월요일 09:00 KST(00:00 UTC) 지난 7일 릴스 성과 리포트.
+on:
+  schedule:
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "기간(일)"
+        default: "7"
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
+      WINDSOR_IG_ACCOUNT: ${{ vars.WINDSOR_IG_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 리포트 생성
+        run: |
+          OUT="reports/weekly/$(TZ=Asia/Seoul date +%F)_tiand.md"
+          echo "OUT=$OUT" >> "$GITHUB_ENV"
+          python tools/insta_report.py --days "${{ inputs.days || '7' }}" -o "$OUT"
+          cat "$OUT" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: weekly-report-${{ github.run_id }}
+          path: ${{ env.OUT }}
+      - name: 리포트 커밋
+        run: |
+          git config user.name "weekly-report"
+          git config user.email "weekly-report@users.noreply.github.com"
+          git add "$OUT"
+          git commit -m "Weekly IG report $(TZ=Asia/Seoul date +%F)" || exit 0
+          git pull --rebase -q && git push
