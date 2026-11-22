@@ -2,6 +2,12 @@
 
 DIO Present 인스타그램 카드뉴스 작업물과 제작 도구.
 
+## 릴스 자동화 파이프라인 (`pipeline/`)
+
+@tiand_official 에 월·수·금 19:00 KST 릴스 1개를 만들고(캡션·해시태그 초안 포함) 예약 업로드합니다.
+실제 게시는 승인 스위치를 켜기 전까지 꺼져 있고(dry-run), 매주 월요일 성과 리포트가 자동으로 돕니다.
+설계, 브리프 작성법, 필요한 시크릿은 [`pipeline/README.md`](pipeline/README.md) 참고.
+
 ## 인스타 릴스 성과 리포트
 
 `tools/insta_report.py`는 Windsor.ai instagram 커넥터에서 최근 30일 데이터를 받아

@@ -66,7 +66,13 @@ def resolve_account(
     key: str,
     path: Path | str | None = None,
     env: Mapping[str, str] | None = None,
+    require_secrets: bool = True,
 ) -> Account:
+    """계정 정보를 읽는다.
+
+    require_secrets=False 이면 토큰·사용자 ID가 없어도 자리표시자로 채운다.
+    토큰이 아직 없을 때 dry-run 계획만 만들 때 쓴다(실제 업로드에는 쓰지 말 것).
+    """
     env = os.environ if env is None else env
     data = load_accounts_file(path)
     accounts = data["accounts"]
@@ -78,14 +84,14 @@ def resolve_account(
     uid_env = entry.get("user_id_env", f"{prefix}_USER_ID")
 
     missing = [n for n in (token_env, uid_env) if not env.get(n)]
-    if missing:
+    if missing and require_secrets:
         raise ConfigError(f"계정 '{key}'의 환경변수가 없습니다: {', '.join(missing)}")
 
     return Account(
         key=key,
         username=entry.get("username", key),
-        user_id=env[uid_env],
-        access_token=env[token_env],
+        user_id=env.get(uid_env) or f"<{uid_env}>",
+        access_token=env.get(token_env) or "",
         graph_host=env.get("IG_GRAPH_HOST", data.get("graph_host", DEFAULT_GRAPH_HOST)).rstrip("/"),
         api_version=env.get("IG_API_VERSION", data.get("api_version", DEFAULT_API_VERSION)),
     )

@@ -1,0 +1,90 @@
+name: reels-pipeline (@tiand_official)
+
+# 월·수·금 19:00 KST 릴스 1개.
+# 18:40 KST(09:40 UTC)에 시작해 생성·캡션 초안·dry-run 을 끝내고, 게시 단계는 19:00 KST 까지 기다린다.
+# 실제 게시는 저장소 변수 IG_PUBLISH_ENABLED=true 이고 instagram-publish 환경 승인을 통과했을 때만.
+on:
+  schedule:
+    - cron: "40 9 * * 1,3,5"
+  workflow_dispatch:
+    inputs:
+      brief:
+        description: "특정 브리프 파일 경로 (비우면 자동 선택)"
+        required: false
+        default: ""
+      publish:
+        description: "실제 게시 시도 (IG_PUBLISH_ENABLED=true 일 때만 효과)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: reels-pipeline-tiand
+  cancel-in-progress: false
+
+env:
+  ACCOUNT: tiand
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 의존성 (ffmpeg, 한글 글꼴, Pillow)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ffmpeg fonts-noto-cjk
+          pip install -r requirements.txt pillow
+      - name: 릴스 생성 + 캡션 초안 + dry-run
+        run: |
+          if [ -n "${{ inputs.brief }}" ]; then BRIEF=(--brief "${{ inputs.brief }}"); else BRIEF=(); fi
+          python -m pipeline prepare --account "$ACCOUNT" --out build/reel "${BRIEF[@]}"
+      - name: 요약
+        run: |
+          {
+            echo "## 릴스 초안 (@tiand_official)"
+            python -c "import json;m=json.load(open('build/reel/manifest.json'));print(f\"- 브리프: \`{m['brief_id']}\`\n- 게시 예정: {m['slot_date']} {m['slot_time']} KST\n- 실제 게시 스위치(IG_PUBLISH_ENABLED): ${{ vars.IG_PUBLISH_ENABLED || 'false' }}\")"
+            echo; echo '### 캡션 초안'; echo '```'; cat build/reel/caption.txt; echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reel-${{ github.run_id }}
+          path: build/reel/
+          retention-days: 30
+
+  publish:
+    needs: prepare
+    # 승인 스위치가 꺼져 있으면 이 job 은 아예 실행되지 않는다 (= dry-run 만).
+    if: vars.IG_PUBLISH_ENABLED == 'true' && (github.event_name == 'schedule' || inputs.publish)
+    runs-on: ubuntu-latest
+    environment: instagram-publish
+    timeout-minutes: 120
+    permissions:
+      contents: write
+    env:
+      IG_PUBLISH_APPROVED: ${{ vars.IG_PUBLISH_ENABLED }}
+      IG_TIAND_ACCESS_TOKEN: ${{ secrets.IG_TIAND_ACCESS_TOKEN }}
+      IG_TIAND_USER_ID: ${{ secrets.IG_TIAND_USER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          name: reel-${{ github.run_id }}
+          path: build/reel/
+      - name: 게시 (19:00 KST 까지 대기 후)
+        run: python -m pipeline publish --manifest build/reel/manifest.json --publish
+      - name: 게시 기록 커밋
+        run: |
+          git config user.name "reels-pipeline"
+          git config user.email "reels-pipeline@users.noreply.github.com"
+          git add pipeline/state/posted.json
+          git commit -m "Record posted reel ($(date -u +%F))" || exit 0
+          git pull --rebase -q && git push
