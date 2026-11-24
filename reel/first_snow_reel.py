@@ -158,7 +158,7 @@ class Reel:
         self.end_title = text_card(["첫눈이 오기 전에"], 96, SERIF_B)
         self.end_artist = text_card(["Soulful Girl"], 46, SERIF_R, tracking=0.12)
         self.end_cta = youtube_button("YouTube에서 전곡 듣기")
-        self.end_handle = text_card(["YouTube  @diopresent  ·  '첫눈이 오기 전에' 검색"], 32, SANS_R, tracking=0.02)
+        self.end_handle = text_card(["YouTube  @Soulfulgirl_dio  ·  프로필 링크 탭"], 34, SANS_R, tracking=0.02)
         self.tag = text_card(["Soulful Girl  ·  눈 시리즈"], 30, SANS_R, tracking=0.1)
         self.flakes = make_flakes()
 
