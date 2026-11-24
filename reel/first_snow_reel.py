@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Soulful Girl 「첫눈이 오기 전에」 릴스 (1080x1920, 15초).
+"""Soulful Girl 「첫눈이 오기 전에」 릴스 (1080x1920, 18.5초).
 
 사진 한 장을 배경으로 천천히 앞으로 다가가는(push-in) 화면 위에
 가사/문구 카드가 차례로 뜨고, 후반부에 첫눈이 내리기 시작한다.
 
-    python3 reel/first_snow_reel.py PHOTO.jpg -o out.mp4 [--audio song.mp3 --audio-start 42]
+    python3 reel/first_snow_reel.py PHOTO.jpg -o out.mp4 [--audio song.mp3 --audio-start 53.49]
     python3 reel/first_snow_reel.py PHOTO.jpg --preview 0,4,8,12,14.5
 """
 import argparse
@@ -17,21 +17,23 @@ import sys
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
-W, H, FPS, DUR = 1080, 1920, 30, 15.0
+W, H, FPS, DUR = 1080, 1920, 30, 18.5
 SERIF_B = "/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc"
 SERIF_R = "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc"
 SANS_R = "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+SANS_B = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
 KR = 1  # Noto CJK .ttc 안의 KR 인덱스
 
 # (시작, 끝, 줄 목록, 글자 크기, 글꼴, 중심 y)
 # 가사: 1절 후렴. 음원을 넣을 땐 후렴 첫 줄이 0초에 오도록 --audio-start를 맞춘다.
+BAR = 60 / 90.7 * 4  # 약 2.65초 (91 BPM, 4/4)
+PH = BAR * 2          # 가사 한 줄 = 2마디
 CARDS = [
-    (0.0, 3.0, ["첫눈이 오기 전에"], 104, SERIF_B, 640),
-    (3.0, 6.2, ["너를 여기서", "보내 줄게"], 72, SERIF_R, 640),
-    (6.2, 10.0, ["붙잡고 있던 마지막 온기까지", "내 손으로 가만히 놓아 줄게"], 60, SERIF_R, 640),
-    (10.0, 12.8, ["첫눈이 오기 전에", "이 긴 계절을 끝내 볼게"], 66, SERIF_R, 640),
+    (0.0, PH, ["첫눈이 오기 전에"], 104, SERIF_B, 640),
+    (PH, PH * 2, ["너를 여기서", "보내 줄게"], 72, SERIF_R, 640),
+    (PH * 2, PH * 3, ["붙잡고 있던 마지막 온기까지", "내 손으로 가만히 놓아 줄게"], 60, SERIF_R, 640),
 ]
-END_START = 12.8  # 이후 엔딩 카드 고정
+END_START = PH * 3  # 이후 엔딩 카드 고정
 
 
 def font(path, size):
@@ -70,6 +72,26 @@ def text_card(lines, size, path, tracking=0.04, gap=1.45, shadow=True):
     return out
 
 
+def youtube_button(label):
+    """빨간 재생 아이콘 + 문구가 들어간 알약 모양 버튼 (유튜브 유입용 CTA)."""
+    f = font(SANS_B, 44)
+    tw = f.getlength(label)
+    icon_w, pad, h = 76, 40, 108
+    w = int(pad + icon_w + 22 + tw + pad)
+    img = Image.new("RGBA", (w + 40, h + 40), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle([20, 26, 20 + w, 26 + h], radius=h / 2, fill=(0, 0, 0, 90))  # 그림자
+    img = img.filter(ImageFilter.GaussianBlur(8))
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle([20, 20, 20 + w, 20 + h], radius=h / 2, fill=(255, 255, 255, 240))
+    ix, iy = 20 + pad, 20 + (h - 54) / 2
+    d.rounded_rectangle([ix, iy, ix + icon_w, iy + 54], radius=14, fill=(255, 0, 0, 255))
+    cx, cy = ix + icon_w / 2 + 3, iy + 27
+    d.polygon([(cx - 11, cy - 14), (cx - 11, cy + 14), (cx + 14, cy)], fill=(255, 255, 255, 255))
+    d.text((ix + icon_w + 22, 20 + h / 2), label, font=f, fill=(20, 20, 24, 255), anchor="lm")
+    return img
+
+
 def load_background(photo):
     """사진을 세로 9:16로 자르고 Soulful Girl 톤(차가운 저채도)으로 보정한다."""
     im = ImageOps.exif_transpose(Image.open(photo)).convert("RGB")
@@ -104,11 +126,11 @@ def make_flakes(n=170, seed=7):
             "sway": rnd.uniform(14, 40),
             "freq": rnd.uniform(0.6, 1.4),
             "phase": rnd.uniform(0, 6.28),
-            "born": rnd.uniform(9.0, 14.0),  # 9초부터 첫눈이 하나둘
+            "born": rnd.uniform(9.8, 17.0),  # 둘째 줄 끝무렵부터 첫눈이 하나둘
         })
     # 맨 처음 한 송이: 9.0초 화면 중앙 근처
     flakes.append({"x": W * 0.56, "y0": 380, "speed": 150, "r": 6, "sway": 22,
-                   "freq": 0.8, "phase": 0, "born": 8.6})
+                   "freq": 0.8, "phase": 0, "born": 9.2})
     return flakes
 
 
@@ -135,7 +157,8 @@ class Reel:
         self.cards = [(a, b, text_card(lines, size, path), y) for a, b, lines, size, path, y in CARDS]
         self.end_title = text_card(["첫눈이 오기 전에"], 96, SERIF_B)
         self.end_artist = text_card(["Soulful Girl"], 46, SERIF_R, tracking=0.12)
-        self.end_cta = text_card(["프로필 링크에서 전곡 듣기"], 38, SANS_R, tracking=0.02)
+        self.end_cta = youtube_button("YouTube에서 전곡 듣기")
+        self.end_handle = text_card(["YouTube  @diopresent  ·  '첫눈이 오기 전에' 검색"], 32, SANS_R, tracking=0.02)
         self.tag = text_card(["Soulful Girl  ·  눈 시리즈"], 30, SANS_R, tracking=0.1)
         self.flakes = make_flakes()
 
@@ -149,8 +172,8 @@ class Reel:
         box = (cx - cw / 2, cy - ch / 2, cx + cw / 2, cy + ch / 2)
         img = self.bg.resize((W, H), Image.BILINEAR, box=box).convert("RGBA")
         # 후반부: 눈이 오면서 아주 조금 더 차갑고 어두워짐
-        if t > 9.0:
-            k = ease((t - 9.0) / 3.0) * 0.22
+        if t > 9.8:
+            k = ease((t - 9.8) / 3.0) * 0.22
             img = Image.blend(img, Image.new("RGBA", (W, H), (30, 42, 66, 255)), k)
 
         # 2) 상단 태그 (계정 톤 유지)
@@ -172,7 +195,8 @@ class Reel:
             self.paste(img, self.end_title, 760 + (1 - k) * 30, k)
             self.paste(img, self.end_artist, 900 + (1 - k) * 30, k * 0.95)
             k2 = ease((t - END_START - 0.5) / 0.8)
-            self.paste(img, self.end_cta, 1640, k2 * 0.9)
+            self.paste(img, self.end_cta, 1560 + (1 - k2) * 20, k2)
+            self.paste(img, self.end_handle, 1680, k2 * 0.9)
 
         # 6) 마지막 0.4초는 살짝 어둡게 닫기 (반복 재생 시 자연스럽게)
         if t > DUR - 0.4:
