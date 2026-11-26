@@ -130,6 +130,15 @@ def validate(cfg):
             errors.append(f"cta.start {a}초가 마지막 자막(끝 {prev_end:g}초)과 겹칩니다.")
         if a >= dur:
             errors.append("cta.start가 영상 길이보다 깁니다.")
+    bg = cfg.get("background")
+    if bg:
+        src = bg.get("image") or bg.get("video")
+        if not src or (bg.get("image") and bg.get("video")):
+            errors.append("background 에는 image 또는 video 중 하나만 적습니다.")
+        elif not os.path.isfile(src):
+            errors.append(f"background 파일이 없습니다: {src}")
+        if not 0 <= float(bg.get("dim", 0.45)) < 1:
+            errors.append("background.dim 은 0 이상 1 미만입니다.")
     if cfg.get("visual") not in ("equalizer", "none"):
         errors.append("visual은 'equalizer' 또는 'none'입니다.")
     return errors, warnings
@@ -310,7 +319,8 @@ def draw_song(draw, fonts, song, theme, W, y, alpha):
 def render_frame(cfg, fonts, t):
     W, H = cfg["size"]
     th = cfg["theme"]
-    img = Image.new("RGBA", (W, H), rgba(th["background"]))
+    # 배경 사진/영상이 있으면 글자 층만 투명하게 그리고 배경은 ffmpeg 에서 합성한다.
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0) if cfg.get("background") else rgba(th["background"]))
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
     dur = float(cfg["duration"])
@@ -353,7 +363,30 @@ def render_frame(cfg, fonts, t):
         draw_song(d, fonts, song, th, W, int(song.get("y", 1660)), sa)
 
     img.alpha_composite(layer)
-    return img.convert("RGB")
+    return img if cfg.get("background") else img.convert("RGB")
+
+
+def background_input(cfg):
+    """배경 사진/영상의 ffmpeg 입력 인자와 필터(1080x1920 채우기 + 어둡게)를 돌려준다."""
+    bg = cfg["background"]
+    W, H = cfg["size"]
+    fps, dur = int(cfg["fps"]), float(cfg["duration"])
+    dim = float(bg.get("dim", 0.45))
+    fill = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1"
+    if bg.get("video"):
+        args = ["-stream_loop", "-1", "-t", str(dur), "-i", bg["video"]]
+        chain = f"{fill},fps={fps}"
+    else:
+        # 사진: 천천히 확대(켄 번즈). 2배로 키운 뒤 zoompan 해서 떨림을 줄인다.
+        n = int(round(fps * dur))
+        zoom = float(bg.get("zoom", 1.08))
+        args = ["-loop", "1", "-framerate", str(fps), "-t", str(dur), "-i", bg["image"]]
+        chain = (f"scale={W * 2}:{H * 2}:force_original_aspect_ratio=increase,crop={W * 2}:{H * 2},"
+                 f"zoompan=z='1+{zoom - 1:.4f}*on/{n}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
+                 f":d=1:s={W}x{H}:fps={fps},setsar=1")
+    if dim > 0:
+        chain += f",drawbox=x=0:y=0:w=iw:h=ih:color=black@{dim:.2f}:t=fill"
+    return args, chain
 
 
 # ---------------------------------------------------------------- 출력
@@ -370,16 +403,26 @@ def encode(cfg, fonts, out):
     W, H = cfg["size"]
     fps, dur = int(cfg["fps"]), float(cfg["duration"])
     song = cfg["song"]
+    has_bg = bool(cfg.get("background"))
     cmd = [ffmpeg, "-y", "-loglevel", "error",
-           "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(fps), "-i", "-"]
+           "-f", "rawvideo", "-pix_fmt", "rgba" if has_bg else "rgb24", "-s", f"{W}x{H}", "-r", str(fps),
+           "-i", "-"]
+    vmap, n_in = "0:v", 1
+    if has_bg:
+        bg_args, chain = background_input(cfg)
+        cmd += bg_args
+        cmd += ["-filter_complex", f"[1:v]{chain}[bg];[bg][0:v]overlay=format=auto:shortest=1,format=yuv420p[v]"]
+        vmap, n_in = "[v]", 2
     if song.get("audio"):
         cmd += ["-ss", str(song.get("audio_start", 0)), "-t", str(dur), "-i", song["audio"]]
         fade_at = max(0.0, dur - 1.0)
-        cmd += ["-map", "0:v", "-map", "1:a", "-af", f"afade=t=out:st={fade_at}:d=1",
+        cmd += ["-map", vmap, "-map", f"{n_in}:a", "-af", f"afade=t=out:st={fade_at}:d=1",
                 "-c:a", "aac", "-b:a", "192k", "-shortest"]
     elif cfg.get("silent_audio_track"):
         cmd += ["-f", "lavfi", "-t", str(dur), "-i", "anullsrc=r=44100:cl=stereo",
-                "-map", "0:v", "-map", "1:a", "-c:a", "aac", "-shortest"]
+                "-map", vmap, "-map", f"{n_in}:a", "-c:a", "aac", "-shortest"]
+    elif has_bg:
+        cmd += ["-map", vmap]
     cmd += ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18", "-preset", "medium",
             "-movflags", "+faststart", out]
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
@@ -393,6 +436,21 @@ def encode(cfg, fonts, out):
     if proc.wait() != 0:
         raise ConfigError("ffmpeg 인코딩에 실패했습니다.")
     print(f"\r완료: {out} ({W}x{H}, {dur:g}s, {fps}fps)", file=sys.stderr)
+
+
+def preview_with_background(cfg, frame, t):
+    """미리보기 PNG 에 배경(해당 시점 프레임)을 깔아 준다."""
+    ffmpeg = need_ffmpeg()
+    W, H = cfg["size"]
+    bg_args, chain = background_input(cfg)
+    proc = subprocess.run([ffmpeg, "-loglevel", "error", *bg_args, "-vf", chain, "-ss", f"{t:.2f}",
+                           "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgba", "-"],
+                          capture_output=True)
+    if proc.returncode != 0 or len(proc.stdout) < W * H * 4:
+        raise ConfigError("배경 미리보기 생성에 실패했습니다.")
+    base = Image.frombytes("RGBA", (W, H), proc.stdout[:W * H * 4])
+    base.alpha_composite(frame)
+    return base.convert("RGB")
 
 
 def main(argv=None):
@@ -414,7 +472,10 @@ def main(argv=None):
             os.makedirs(os.path.dirname(os.path.abspath(base)), exist_ok=True)
             for s in args.preview.split(","):
                 p = f"{base}_preview_{float(s):05.2f}s.png"
-                render_frame(cfg, fonts, float(s)).save(p)
+                frame = render_frame(cfg, fonts, float(s))
+                if cfg.get("background"):
+                    frame = preview_with_background(cfg, frame, float(s))
+                frame.save(p)
                 print("미리보기:", p)
             return 0
         encode(cfg, fonts, out)

@@ -1,7 +1,7 @@
 # 릴스 자동화 파이프라인 (@tiand_official)
 
 ```
-월·수·금 18:40 KST  ──▶ [prepare]  브리프 선택 → reel/make_reel.py 로 MP4 → 캡션·해시태그 초안 → dry-run 계획
+매일 18:40 KST     ──▶ [prepare]  브리프 선택(없으면 자동 곡 소개) → 배경음악·배경 고르기 → reel/make_reel.py 로 MP4 → 캡션·해시태그 초안 → dry-run 계획
                               │      (토큰 없이 동작. 결과는 Actions 아티팩트 + 실행 요약에 캡션 표시)
                               ▼
                        [publish]  IG_PUBLISH_ENABLED=true 일 때만 실행
@@ -38,10 +38,34 @@
 ```
 
 - 선택 순서: 오늘 날짜 브리프 → 없으면 날짜가 없거나 지난 미게시 브리프 중 가장 오래된 것. 미래 날짜는 그날 전엔 안 씀.
-- 브리프가 하나도 없으면 그 회차는 실패로 끝나 알림이 옵니다.
+- 쓸 브리프가 없는 날은 **자동 곡 소개 릴스**를 만듭니다 (아래 '배경음악·배경 자동 선택').
 - `caption` 을 비우면 릴스 문구(훅·자막·CTA)로 캡션 초안을 만듭니다.
 - 해시태그 = 브리프 해시태그 + `config/pipeline.json` 의 계정 기본 해시태그, 중복 제거, 최대 15개.
 - `tag`, CTA 의 `팔로우 → @tiand_official` 은 계정 기본값으로 자동으로 채웁니다.
+
+## 배경음악·배경 자동 선택
+
+매 회차 띠앙드 곡의 30초 하이라이트(후렴 구간)를 배경음악으로, 풍경 사진/영상을 배경으로 깝니다.
+
+| 무엇 | 위치 | 만드는 도구 |
+|---|---|---|
+| 곡 클립 + 목록 | `pipeline/music/tiand/` (`catalog.json`, `<ISRC>.m4a`) | `tools/extract_highlights.py` |
+| 배경 사진·영상 | `pipeline/backgrounds/tiand/` (`backgrounds.json`) | `tools/prepare_backgrounds.py` |
+
+- **브리프 곡이 카탈로그에 있으면** 그 곡 클립을 씁니다. 없으면 무음 그대로 둡니다 (다른 곡을 잘못 붙이지 않게). `song.audio` 를 직접 적으면 그게 우선.
+- **브리프가 없는 날**은 카탈로그에서 곡을 골라 훅·자막·CTA·캡션까지 자동으로 만듭니다 (`pipeline/media.py`).
+- 곡·배경 고르는 규칙: 게시 기록(`posted.json` 의 `track_id`, `background`)에서 가장 덜 쓴 것 중 날짜 기준으로 돌아가며 선택. 실제 게시가 꺼져 있어도 매일 다른 조합이 나옵니다.
+- **미발매곡**(`release_date` 가 비어 있음)은 고르지 않습니다. 발매되면 `catalog.json` 에 날짜를 채우세요.
+- 배경을 쓰지 않으려면 브리프에 `"background": false`. 어둡기는 `config/pipeline.json` 의 `background_dim` (기본 0.5).
+
+곡이나 배경을 추가·교체할 때 (PC 에서, 원본 폴더는 읽기만 함):
+
+```bash
+python3 tools/extract_highlights.py "E:/앨범/DistroKid 백업" --artist 띠앙드 --display-artist "TIAND(띠앙드)" --out pipeline/music/tiand
+python3 tools/prepare_backgrounds.py "E:/앨범/DistroKid 백업/플레이리스트배경사진" --out pipeline/backgrounds/tiand --images 120
+```
+
+이미 만든 클립·배경은 건너뛰므로 새 파일만 추가됩니다.
 
 ## 로컬 실행
 
