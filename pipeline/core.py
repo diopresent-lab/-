@@ -21,6 +21,8 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable
 
+from . import media
+
 ROOT = Path(__file__).resolve().parents[1]
 PIPELINE_CONFIG = ROOT / "config" / "pipeline.json"
 MAKE_REEL = ROOT / "reel" / "make_reel.py"
@@ -61,15 +63,17 @@ def posted_ids(state: dict, account: str) -> set[str]:
 
 
 def record_posted(path: Path, account: str, brief_id: str, media_id: str | None,
-                  permalink: str | None, now: datetime) -> None:
+                  permalink: str | None, now: datetime, extra: dict | None = None) -> None:
     state = load_state(path)
-    state.setdefault("posted", []).append({
+    entry = {
         "account": account,
         "brief_id": brief_id,
         "media_id": media_id,
         "permalink": permalink,
         "posted_at": now.isoformat(timespec="seconds"),
-    })
+    }
+    entry.update({k: v for k, v in (extra or {}).items() if v})
+    state.setdefault("posted", []).append(entry)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
@@ -96,26 +100,23 @@ def load_briefs(briefs_dir: Path) -> list[Brief]:
     return out
 
 
-def pick_brief(briefs: list[Brief], done: set[str], today: date) -> Brief:
+def pick_brief(briefs: list[Brief], done: set[str], today: date) -> Brief | None:
     """오늘 날짜로 지정된 브리프 → 없으면 날짜 미지정·지난 날짜 중 가장 오래된 미게시 브리프.
 
-    미래 날짜로 지정된 브리프는 그날이 오기 전에는 쓰지 않는다.
+    미래 날짜로 지정된 브리프는 그날이 오기 전에는 쓰지 않는다. 쓸 브리프가 없으면 None.
     """
     pending = [b for b in briefs if b.id not in done]
     for b in pending:
         if b.publish_date == today:
             return b
     usable = [b for b in pending if b.publish_date is None or b.publish_date < today]
-    if usable:
-        return usable[0]
-    raise PipelineError(
-        "게시할 브리프가 없습니다. pipeline/briefs/<계정>/ 에 새 브리프 JSON을 추가하세요."
-    )
+    return usable[0] if usable else None
 
 
 # --------------------------------------------------------------------------- 릴스 설정·렌더
 
-def build_reel_config(brief: Brief, acc_cfg: dict, output: Path) -> dict:
+def build_reel_config(brief: Brief, acc_cfg: dict, output: Path, track: dict | None = None,
+                      background: dict | None = None) -> dict:
     reel = json.loads(json.dumps(brief.data["reel"]))  # 깊은 복사
     defaults = acc_cfg.get("reel_defaults", {})
     reel.setdefault("tag", defaults.get("tag", ""))
@@ -125,6 +126,14 @@ def build_reel_config(brief: Brief, acc_cfg: dict, output: Path) -> dict:
     audio = (reel.get("song") or {}).get("audio")
     if audio:
         reel["song"]["audio"] = str(_abs(audio))
+    elif track:
+        reel["song"]["audio"] = str(_abs(acc_cfg["music_dir"]) / track["file"])
+        reel["song"]["audio_start"] = 0
+        reel["song"].setdefault("artist", track.get("artist", ""))
+    if background and "background" not in reel:
+        src = str(_abs(acc_cfg["backgrounds_dir"]) / background["file"])
+        reel["background"] = {background["type"]: src, "dim": float(acc_cfg.get("background_dim", 0.5))}
+        reel.setdefault("visual", "none")
     reel["output"] = str(output)
     return reel
 
@@ -228,15 +237,35 @@ def prepare(account: str, out_dir: Path, today: date | None = None, brief_path: 
     acc_cfg = load_pipeline_config(account, config_path)
     today = today or datetime.now(acc_cfg["tz"]).date()
     state_file = _abs(acc_cfg["state_file"])
+    state = load_state(state_file)
+    tracks = media.load_tracks(_abs(acc_cfg["music_dir"])) if acc_cfg.get("music_dir") else []
+    backgrounds = media.load_backgrounds(_abs(acc_cfg["backgrounds_dir"])) if acc_cfg.get("backgrounds_dir") else []
+
+    track = None
     if brief_path:
         data = json.loads(Path(brief_path).read_text(encoding="utf-8"))
         brief = Brief(id=data.get("id") or Path(brief_path).stem, path=Path(brief_path), data=data)
     else:
-        brief = pick_brief(load_briefs(_abs(acc_cfg["briefs_dir"])), posted_ids(load_state(state_file), account), today)
+        brief = pick_brief(load_briefs(_abs(acc_cfg["briefs_dir"])), posted_ids(state, account), today)
+    if brief is None:
+        # 브리프가 없는 날: 카탈로그에서 곡을 골라 곡 소개 릴스를 자동으로 만든다.
+        track = media.pick_track(tracks, state, account, today) if acc_cfg.get("auto_brief") else None
+        if track is None:
+            raise PipelineError(
+                "게시할 브리프가 없습니다. pipeline/briefs/<계정>/ 에 새 브리프 JSON을 추가하세요."
+            )
+        data = media.auto_brief(track, today, float(acc_cfg.get("auto_duration", 15)))
+        brief = Brief(id=data["id"], path=_abs(acc_cfg["briefs_dir"]) / f"{data['id']}.json", data=data)
+    elif not (brief.data["reel"].get("song") or {}).get("audio"):
+        # 브리프 곡이 카탈로그에 있으면 그 곡의 하이라이트를 배경음악으로 쓴다.
+        track = media.find_track(tracks, (brief.data["reel"].get("song") or {}).get("title", ""))
+    background = media.pick_background(backgrounds, state, account, today) \
+        if brief.data.get("background", True) is not False else None
 
     out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "brief.json").write_text(json.dumps(brief.data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     video = out_dir / f"{brief.id}.mp4"
-    render(build_reel_config(brief, acc_cfg, video), out_dir)
+    render(build_reel_config(brief, acc_cfg, video, track, background), out_dir)
 
     caption = draft_caption(brief, acc_cfg)
     (out_dir / "caption.txt").write_text(caption + "\n", encoding="utf-8")
@@ -250,12 +279,16 @@ def prepare(account: str, out_dir: Path, today: date | None = None, brief_path: 
         "account": account,
         "username": acc_cfg.get("username"),
         "brief_id": brief.id,
-        "brief_path": str(brief.path.relative_to(ROOT)) if brief.path.is_relative_to(ROOT) else str(brief.path),
+        "brief_path": (str(brief.path.relative_to(ROOT)) if brief.path.is_relative_to(ROOT) else str(brief.path))
+                      if brief.path.exists() else None,
         "slot_date": max(today, brief.publish_date or today).isoformat(),
         "slot_time": acc_cfg.get("slot_time", "19:00"),
         "video": video.name,
         "caption_file": "caption.txt",
         "caption": caption,
+        "track_id": track["id"] if track else None,
+        "track_title": track["title"] if track else None,
+        "background": background["file"] if background else None,
         "dry_run_plan": plan_lines,
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
@@ -295,5 +328,6 @@ def publish(manifest_path: Path, publish_flag: bool, env: dict | None = None,
         slot_day = date.fromisoformat(m["slot_date"])
         wait_for_slot(slot_datetime(slot_day, m["slot_time"], acc_cfg["tz"]), now_fn, sleep, log=log)
     res = factory(acct).upload(req, dry_run=False)
-    record_posted(state_file, account, m["brief_id"], res.media_id, res.permalink, now_fn())
+    record_posted(state_file, account, m["brief_id"], res.media_id, res.permalink, now_fn(),
+                  {"track_id": m.get("track_id"), "background": m.get("background")})
     return {"published": True, "media_id": res.media_id, "permalink": res.permalink}

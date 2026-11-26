@@ -10,9 +10,21 @@
         "tag": "TIAND · 띠앙드",
         "cta_sub": "팔로우 → @tiand_official"
       },
-      "base_hashtags": ["띠앙드", "TIAND", "자작곡", "신곡", "인디음악", "릴스"],
+      "base_hashtags": [
+        "띠앙드",
+        "TIAND",
+        "자작곡",
+        "신곡",
+        "인디음악",
+        "릴스"
+      ],
       "max_hashtags": 15,
-      "caption_footer": "🎧 전체 곡은 프로필 링크에서"
+      "caption_footer": "🎧 전체 곡은 프로필 링크에서",
+      "music_dir": "pipeline/music/tiand",
+      "backgrounds_dir": "pipeline/backgrounds/tiand",
+      "background_dim": 0.5,
+      "auto_brief": true,
+      "auto_duration": 15
     }
   }
 }

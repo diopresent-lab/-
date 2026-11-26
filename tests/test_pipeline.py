@@ -41,10 +41,8 @@ def test_pick_prefers_today_then_oldest_past():
 
 def test_pick_skips_future_and_posted():
     bs = [brief("a", "2026-12-01")]
-    with pytest.raises(PipelineError):
-        pick_brief(bs, set(), date(2026, 11, 23))
-    with pytest.raises(PipelineError):
-        pick_brief([brief("a")], {"a"}, date(2026, 11, 23))
+    assert pick_brief(bs, set(), date(2026, 11, 23)) is None
+    assert pick_brief([brief("a")], {"a"}, date(2026, 11, 23)) is None
 
 
 # ---- 캡션·해시태그 ----
