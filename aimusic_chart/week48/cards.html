@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>aimusic_chart WEEK 48</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Archivo:wght@500;800;900&family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: 1080x1350 (4:5) 캐러셀. 좌측 순위 레일 + 이퀄라이저 바 모티프 */
+:root{
+  --ink:#0E1330;      /* 배경 딥 인디고 */
+  --paper:#F3F1FF;    /* 텍스트 화이트(라일락 기운) */
+  --signal:#FF5B2E;   /* 차트 시그널 오렌지 */
+  --cobalt:#3D5BFF;   /* 보조 코발트 */
+  --mute:#8E93B8;     /* 보조 텍스트 */
+  --line:rgba(243,241,255,.16);
+  --display:"Archivo","Black Han Sans",sans-serif;
+  --kr-display:"Black Han Sans","Noto Sans KR",sans-serif;
+  --body:"Noto Sans KR",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#2a2d40;display:flex;flex-direction:column;align-items:center;gap:40px;padding:40px 0;font-family:var(--body);color:var(--paper)}
+.card{width:1080px;height:1350px;background:var(--ink);position:relative;overflow:hidden;padding:84px 88px;display:flex;flex-direction:column}
+.top{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:26px;letter-spacing:.08em;color:var(--mute);text-transform:uppercase}
+.top b{color:var(--paper);font-weight:700;text-transform:none}
+.dot{display:inline-block;width:14px;height:14px;border-radius:50%;background:var(--signal);margin-right:14px;vertical-align:middle}
+.foot{margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;font-family:var(--mono);font-size:24px;color:var(--mute);letter-spacing:.06em;border-top:2px solid var(--line);padding-top:28px}
+.eq{position:absolute;right:88px;display:flex;align-items:flex-end;gap:10px}
+.eq i{display:block;width:22px;background:var(--cobalt);border-radius:3px}
+.eq i.hot{background:var(--signal)}
+
+/* 01 커버 */
+.cover h1{font-family:var(--display);font-weight:900;font-size:214px;line-height:.84;letter-spacing:-.04em;margin-top:120px;text-transform:uppercase}
+.cover h1 span{color:var(--signal)}
+.cover .kr{font-family:var(--kr-display);font-size:76px;line-height:1.15;margin-top:56px}
+.cover .sub{font-size:34px;color:var(--mute);margin-top:28px;line-height:1.5}
+.cover .eq{bottom:230px}
+
+/* 픽 카드 */
+.pick .rank{display:flex;align-items:baseline;gap:28px;margin-top:70px}
+.pick .num{font-family:var(--display);font-weight:900;font-size:300px;line-height:.8;letter-spacing:-.05em;color:var(--signal)}
+.pick .chip{font-family:var(--mono);font-size:26px;font-weight:700;padding:10px 18px;border:2px solid var(--paper);border-radius:999px;letter-spacing:.06em}
+.pick .artist{font-family:var(--display);font-weight:800;font-size:44px;letter-spacing:.02em;color:var(--mute);margin-top:56px;text-transform:none}
+.pick .title{font-family:var(--display),var(--kr-display);font-weight:900;font-size:120px;line-height:.95;letter-spacing:-.03em;margin-top:12px;text-transform:uppercase}
+.pick .title.kr{font-family:var(--kr-display);font-weight:400;font-size:112px;text-transform:none;letter-spacing:-.01em}
+.specs{display:grid;grid-template-columns:repeat(3,1fr);margin-top:56px;border-top:2px solid var(--line);border-bottom:2px solid var(--line)}
+.specs div{padding:26px 0}
+.specs div+div{padding-left:28px;border-left:2px solid var(--line)}
+.specs small{display:block;font-family:var(--mono);font-size:22px;color:var(--mute);letter-spacing:.1em;text-transform:uppercase}
+.specs strong{display:block;font-size:36px;font-weight:700;margin-top:8px;line-height:1.25}
+.listen{margin-top:48px;font-size:40px;line-height:1.5;font-weight:500}
+.listen em{font-style:normal;color:var(--signal);font-weight:900}
+.pick .eq{top:150px}
+
+/* 마지막 CTA */
+.cta h2{font-family:var(--kr-display);font-size:104px;line-height:1.15;margin-top:110px}
+.cta h2 span{color:var(--signal)}
+.cta ul{list-style:none;margin-top:72px;display:flex;flex-direction:column;gap:0;border-top:2px solid var(--line)}
+.cta li{display:flex;gap:36px;align-items:center;padding:34px 0;border-bottom:2px solid var(--line);font-size:42px;font-weight:700}
+.cta li span{font-family:var(--mono);font-size:28px;color:var(--signal);width:150px;letter-spacing:.06em}
+.cta .note{font-size:26px;color:var(--mute);margin-top:44px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<!-- 01 COVER -->
+<section class="card cover" id="c1">
+  <div class="top"><span><i class="dot"></i><b>aimusic_chart</b></span><span>WEEK 48 · 2026.11.27</span></div>
+  <h1>AI<br>Music<br><span>Chart</span></h1>
+  <p class="kr">이번 주 에디터 픽 5</p>
+  <p class="sub">늦가을 금요일, 장면별로 골랐어요.<br>아침 카페부터 새벽 드라이브까지.</p>
+  <div class="eq"><i style="height:60px"></i><i style="height:120px"></i><i class="hot" style="height:200px"></i><i style="height:150px"></i><i style="height:90px"></i><i style="height:170px"></i><i style="height:70px"></i></div>
+  <div class="foot"><span>EDITOR'S PICK · 순위는 큐레이션 순서</span><span>SWIPE →</span></div>
+</section>
+
+<!-- 02 PICK 01 -->
+<section class="card pick" id="c2">
+  <div class="top"><span><i class="dot"></i><b>aimusic_chart</b></span><span>PICK 01 / 05</span></div>
+  <div class="rank"><span class="num">01</span><span class="chip">▲ NEW</span></div>
+  <p class="artist">diopresent</p>
+  <h2 class="title">Slow<br>Morning</h2>
+  <div class="specs">
+    <div><small>Genre</small><strong>보사노바<br>카페팝</strong></div>
+    <div><small>Vibe</small><strong>어쿠스틱<br>따뜻함</strong></div>
+    <div><small>Scene</small><strong>오전 10시<br>카페</strong></div>
+  </div>
+  <p class="listen">기온이 한 자릿수로 내려간 아침,<br>라떼 한 잔과 <em>천천히 시작하는 하루</em>.</p>
+  <div class="foot"><span>AI-GENERATED MUSIC</span><span>02</span></div>
+</section>
+
+<!-- 03 PICK 02 -->
+<section class="card pick" id="c3">
+  <div class="top"><span><i class="dot"></i><b>aimusic_chart</b></span><span>PICK 02 / 05</span></div>
+  <div class="rank"><span class="num">02</span><span class="chip">104 BPM</span></div>
+  <p class="artist">diopresent</p>
+  <h2 class="title">After<br>Hours</h2>
+  <div class="specs">
+    <div><small>Genre</small><strong>미니멀<br>K-힙합</strong></div>
+    <div><small>Vibe</small><strong>럭셔리<br>클럽</strong></div>
+    <div><small>Scene</small><strong>금요일<br>밤 11시</strong></div>
+  </div>
+  <p class="listen">불금 퇴근길에 볼륨 하나 올리면<br><em>도시의 밤이 시작</em>돼요.</p>
+  <div class="foot"><span>AI-GENERATED MUSIC</span><span>03</span></div>
+</section>
+
+<!-- 04 PICK 03 -->
+<section class="card pick" id="c4">
+  <div class="top"><span><i class="dot"></i><b>aimusic_chart</b></span><span>PICK 03 / 05</span></div>
+  <div class="rank"><span class="num">03</span><span class="chip">110 BPM</span></div>
+  <p class="artist">띠앙드</p>
+  <h2 class="title">Just<br>You</h2>
+  <div class="specs">
+    <div><small>Genre</small><strong>멜로딕<br>신스팝</strong></div>
+    <div><small>Vibe</small><strong>중저음<br>남성 보컬</strong></div>
+    <div><small>Scene</small><strong>주말<br>드라이브</strong></div>
+  </div>
+  <p class="listen">창문 살짝 내리고 한강 따라.<br><em>후렴에서 꼭 따라 부르게</em> 되는 곡.</p>
+  <div class="foot"><span>AI-GENERATED MUSIC</span><span>04</span></div>
+</section>
+
+<!-- 05 PICK 04 -->
+<section class="card pick" id="c5">
+  <div class="top"><span><i class="dot"></i><b>aimusic_chart</b></span><span>PICK 04 / 05</span></div>
+  <div class="rank"><span class="num">04</span><span class="chip">HYPER TECHNO</span></div>
+  <p class="artist">dio present</p>
+  <h2 class="title">Ride<br>Cycle</h2>
+  <div class="specs">
+    <div><small>Genre</small><strong>하이퍼<br>테크노</strong></div>
+    <div><small>Vibe</small><strong>반복<br>챈트 훅</strong></div>
+    <div><small>Scene</small><strong>실내<br>라이딩</strong></div>
+  </div>
+  <p class="listen">추워서 밖에 못 나가는 날,<br>실내 자전거 <em>케이던스 올리는 7곡</em>.</p>
+  <div class="foot"><span>AI-GENERATED MUSIC</span><span>05</span></div>
+</section>
+
+<!-- 06 PICK 05 -->
+<section class="card pick" id="c6">
+  <div class="top"><span><i class="dot"></i><b>aimusic_chart</b></span><span>PICK 05 / 05</span></div>
+  <div class="rank"><span class="num">05</span><span class="chip">MOODY</span></div>
+  <p class="artist">Soulful Girl</p>
+  <h2 class="title kr">비·눈·안개</h2>
+  <div class="specs">
+    <div><small>Genre</small><strong>무디<br>신스팝</strong></div>
+    <div><small>Vibe</small><strong>숨결 섞인<br>보컬</strong></div>
+    <div><small>Scene</small><strong>첫눈<br>오는 새벽</strong></div>
+  </div>
+  <p class="listen">곧 첫눈 소식이 올 거예요.<br>그날 새벽을 위해 <em>미리 저장</em>해 두세요.</p>
+  <div class="foot"><span>AI-GENERATED MUSIC</span><span>06</span></div>
+</section>
+
+<!-- 07 CTA -->
+<section class="card cta" id="c7">
+  <div class="top"><span><i class="dot"></i><b>aimusic_chart</b></span><span>WEEK 48 · OUTRO</span></div>
+  <h2>당신의 이번 주<br><span>1위</span>는 몇 번?</h2>
+  <ul>
+    <li><span>COMMENT</span>댓글로 번호 남기기</li>
+    <li><span>SAVE</span>장면별 플레이리스트로 저장</li>
+    <li><span>FOLLOW</span>매주 금요일 새 차트 업데이트</li>
+  </ul>
+  <p class="note">모든 곡은 AI(Suno)로 제작된 음악입니다.<br>스트리밍 링크는 프로필 링크에서 확인하세요.</p>
+  <div class="eq" style="bottom:200px"><i style="height:40px"></i><i style="height:80px"></i><i style="height:130px"></i><i class="hot" style="height:180px"></i></div>
+  <div class="foot"><span>@aimusic_chart</span><span>07</span></div>
+</section>
+
+</body>
+</html>
