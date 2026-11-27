@@ -33,7 +33,8 @@ python playlist/make_playlist_video.py playlist/configs/soulful_girl_winter.json
 # 영상 만들기 → soulful_girl_winter_playlist.mp4 + soulful_girl_winter_playlist_youtube.txt
 python playlist/make_playlist_video.py playlist/configs/soulful_girl_winter.json
 ```
-설정 항목: `base_dir`(음원 폴더), `background`(이미지 또는 반복 영상), `gap_seconds`(곡 사이 무음),
+설정 항목: `base_dir`(음원 폴더), `background`(이미지 또는 반복 영상),
+`fit`(`crop`: 화면을 꽉 채우고 넘치는 부분 자름 / `blur`: 사진 전체를 보이고 양옆을 흐린 사진으로 채움), `gap_seconds`(곡 사이 무음),
 `title`, `intro`, `links`, `hashtags`, `pinned_comment`, `tracks`(artist·title·file).
 `file`에는 `전체목록_ISRC_발매일.csv`의 파일 경로(역슬래시)를 그대로 붙여 넣어도 됩니다.
 

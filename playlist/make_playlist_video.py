@@ -51,6 +51,8 @@ def load_config(config_path, base_dir_override=None):
     cfg["background_path"] = resolve_path(base_dir, cfg["background"])
     cfg.setdefault("gap_seconds", 0)
     cfg.setdefault("fps", 24)
+    cfg.setdefault("fit", "crop")
+    video_filter(cfg["fit"], cfg["fps"])  # 잘못된 fit 값은 여기서 바로 걸러낸다
     return cfg
 
 
@@ -106,10 +108,30 @@ def build_description(cfg, chapters, total):
     return "\n".join(lines) + "\n"
 
 
+def video_filter(fit, fps, label="0:v"):
+    """배경을 1920x1080으로 맞춘다.
+
+    crop: 화면을 꽉 채우고 넘치는 부분을 자른다.
+    blur: 사진 전체를 가운데 두고, 남는 양옆을 같은 사진을 흐리게 깔아 채운다 (정사각형·세로 사진용).
+    """
+    w, h = SIZE
+    tail = f"fps={fps},format=yuv420p[vout]"
+    cover = f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}"
+    if fit == "crop":
+        return f"[{label}]{cover},{tail}"
+    if fit == "blur":
+        return (
+            f"[{label}]split=2[bgsrc][fgsrc];"
+            f"[bgsrc]{cover},boxblur=30:3,eq=brightness=-0.12[bg];"
+            f"[fgsrc]scale={w}:{h}:force_original_aspect_ratio=decrease[fg];"
+            f"[bg][fg]overlay=(W-w)/2:(H-h)/2,{tail}"
+        )
+    raise ConfigError(f"fit 값은 crop 또는 blur 여야 합니다: {fit}")
+
+
 def build_ffmpeg_cmd(cfg, total, output):
     bg = cfg["background_path"]
     is_image = os.path.splitext(bg)[1].lower() in IMAGE_EXTS
-    w, h = SIZE
     cmd = ["ffmpeg", "-y", "-hide_banner"]
     if is_image:
         cmd += ["-loop", "1", "-framerate", str(cfg["fps"]), "-i", bg]
@@ -127,10 +149,7 @@ def build_ffmpeg_cmd(cfg, total, output):
             chain += f",apad=pad_dur={gap}"
         parts.append(f"{chain}[a{i}]")
     parts.append("".join(f"[a{i}]" for i in range(n)) + f"concat=n={n}:v=0:a=1[aout]")
-    parts.append(
-        f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,"
-        f"crop={w}:{h},fps={cfg['fps']},format=yuv420p[vout]"
-    )
+    parts.append(video_filter(cfg.get("fit", "crop"), cfg["fps"]))
     cmd += ["-filter_complex", ";".join(parts), "-map", "[vout]", "-map", "[aout]"]
     cmd += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23"]
     if is_image:

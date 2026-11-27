@@ -80,6 +80,18 @@ class CommandTest(unittest.TestCase):
         self.assertNotIn("apad", cmd[cmd.index("-filter_complex") + 1])
 
 
+class FitTest(unittest.TestCase):
+    def test_blur_fit_overlays_full_photo(self):
+        f = mpv.video_filter("blur", 24)
+        self.assertIn("boxblur", f)
+        self.assertIn("force_original_aspect_ratio=decrease", f)
+        self.assertTrue(f.endswith("[vout]"))
+
+    def test_unknown_fit_rejected(self):
+        with self.assertRaises(mpv.ConfigError):
+            mpv.video_filter("stretch", 24)
+
+
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "ffmpeg 필요")
 class RenderTest(unittest.TestCase):
     def test_end_to_end_render(self):
