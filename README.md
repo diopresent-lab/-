@@ -20,6 +20,23 @@ python tools/insta_report.py --sample tests/fixtures/windsor_sample.json
 python -m unittest discover -s tests
 ```
 
+## 유튜브 플레이리스트 영상 (`playlist/`)
+
+설정 파일(JSON)의 곡 목록으로 1920x1080 장시간 플레이리스트 MP4를 만들고,
+곡 길이로 계산한 타임스탬프(유튜브 챕터)가 들어간 제목·설명란·고정 댓글 텍스트를 함께 만듭니다.
+ffmpeg/ffprobe만 있으면 됩니다 (윈도우: `winget install Gyan.FFmpeg`).
+
+```bash
+# 파일 확인 + 타임스탬프만 미리 보기 (렌더링 안 함)
+python playlist/make_playlist_video.py playlist/configs/soulful_girl_winter.json --check
+
+# 영상 만들기 → soulful_girl_winter_playlist.mp4 + soulful_girl_winter_playlist_youtube.txt
+python playlist/make_playlist_video.py playlist/configs/soulful_girl_winter.json
+```
+설정 항목: `base_dir`(음원 폴더), `background`(이미지 또는 반복 영상), `gap_seconds`(곡 사이 무음),
+`title`, `intro`, `links`, `hashtags`, `pinned_comment`, `tracks`(artist·title·file).
+`file`에는 `전체목록_ISRC_발매일.csv`의 파일 경로(역슬래시)를 그대로 붙여 넣어도 됩니다.
+
 ## 릴스 업로드 자동화 (`tools/ig_upload`)
 
 Instagram Graph API(비즈니스·크리에이터 계정)로 릴스 영상과 캡션을 올립니다.

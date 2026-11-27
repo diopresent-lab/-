@@ -1,0 +1,42 @@
+{
+  "_note": "background는 플레이리스트배경사진 폴더에서 겨울 느낌 사진 하나로 바꾸세요. links의 [링크] 자리는 실제 주소로 채우세요.",
+  "base_dir": "E:/앨범/DistroKid 백업",
+  "background": "플레이리스트배경사진/KakaoTalk_20261125_225922746.jpg",
+  "output": "soulful_girl_winter_playlist.mp4",
+  "gap_seconds": 2,
+  "title": "[Playlist] 첫눈이 오기 전에, 입김이 하얗게 번지는 밤 ❄ Soulful Girl 겨울 감성 플레이리스트",
+  "intro": [
+    "첫눈을 기다리는 저녁부터, 괜찮다고 다독여 주는 깊은 밤까지.",
+    "Soulful Girl의 겨울 노래 15곡을 하루의 끝으로 가는 순서대로 담았어요.",
+    "",
+    "퇴근길 버스 창가, 김 서린 카페 유리창, 잠들기 전 이불 속에서 들어 주세요."
+  ],
+  "links": [
+    "🎧 Soulful Girl 전곡 듣기",
+    "Spotify: [링크]",
+    "멜론: [링크]",
+    "Apple Music: [링크]"
+  ],
+  "hashtags": ["#겨울플레이리스트", "#감성플리", "#SoulfulGirl", "#겨울노래", "#첫눈", "#퇴근길플리"],
+  "pinned_comment": [
+    "❄ 올겨울 첫눈은 누구와 함께 보고 싶으세요? 댓글로 남겨 주세요.",
+    "구독해 두시면 다음 겨울 플리도 가장 먼저 들려드릴게요."
+  ],
+  "tracks": [
+    {"artist": "Soulful Girl", "title": "첫눈이 오기 전에", "file": "Soulful Girl\\2026-11-24 첫눈이 오기 전에\\01 첫눈이 오기 전에.wav"},
+    {"artist": "Soulful Girl", "title": "입김", "file": "Soulful Girl\\2026-11-24 입김\\01 입김.wav"},
+    {"artist": "Soulful Girl", "title": "겨울 냄새", "file": "Soulful Girl\\2026-02-01 겨울 냄새\\01 겨울 냄새.wav"},
+    {"artist": "Soulful Girl", "title": "얼어붙은 입술 (Frozen Lips)", "file": "Soulful Girl\\2026-01-11 얼어붙은 입술 (Frozen Lips)\\01 얼어붙은 입술 (Frozen Lips).wav"},
+    {"artist": "Soulful Girl", "title": "너의 온도 (Melting Point)", "file": "Soulful Girl\\2026-01-15 너의 온도 (Melting Point)\\01 너의 온도 (Melting Point).wav"},
+    {"artist": "Soulful Girl", "title": "눈속의 연인", "file": "Soulful Girl\\2026-01-12 눈속의 연인\\01 눈속의 연인.wav"},
+    {"artist": "Soulful Girl", "title": "Winter Magic (City Lights)", "file": "Soulful Girl\\2026-01-12 Winter Magic (City Lights)\\01 Winter Magic (City Lights).wav"},
+    {"artist": "Soulful Girl", "title": "White Night (하얀 밤)", "file": "Soulful Girl\\2026-01-15 White Night (하얀 밤)\\01 White Night (하얀 밤).wav"},
+    {"artist": "Soulful Girl", "title": "그해 겨울, 우리", "file": "Soulful Girl\\2026-01-28 그해 겨울, 우리\\01 그해 겨울, 우리.wav"},
+    {"artist": "Soulful Girl", "title": "그리움이 조용히 내려와", "file": "Soulful Girl\\2026-02-01 그리움이 조용히 내려와\\01 그리움이 조용히 내려와.wav"},
+    {"artist": "Soulful Girl", "title": "가로등", "file": "Soulful Girl\\2026-02-04 서툰 사랑\\04 가로등.wav"},
+    {"artist": "Soulful Girl", "title": "눈물 예보", "file": "Soulful Girl\\2026-02-04 서툰 사랑\\02 눈물 예보.wav"},
+    {"artist": "Soulful Girl", "title": "괜찮아, 이 밤은 지나가", "file": "Soulful Girl\\2026-02-10 괜찮아, 이 밤은 지나가\\01 괜찮아, 이 밤은 지나가.wav"},
+    {"artist": "Soulful Girl", "title": "수고했어 오늘하루도", "file": "Soulful Girl\\2026-10-15 수고했어 오늘하루도\\01 수고했어 오늘하루도.wav"},
+    {"artist": "Soulful Girl", "title": "눈속의 연인 (Acoustic Ver.)", "file": "Soulful Girl\\2026-01-28 눈속의 연인 (Acoustic Ver.)\\01 눈속의 연인 (Acoustic Ver.).wav"}
+  ]
+}
