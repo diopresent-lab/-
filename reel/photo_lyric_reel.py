@@ -55,7 +55,7 @@ class Reel:
         self.end_title = text_card(["첫눈이 오기 전에"], 92, SERIF_B)
         self.end_artist = text_card(["Soulful Girl"], 44, SERIF_R, tracking=0.12)
         self.end_cta = youtube_button("YouTube에서 전곡 듣기")
-        self.end_sub = text_card(["미니앨범 《하얀 숨》  ·  @Soulfulgirl_dio"], 32, SANS_R, tracking=0.02)
+        self.end_sub = text_card(["싱글 「첫눈이 오기 전에」  ·  @Soulfulgirl_dio"], 32, SANS_R, tracking=0.02)
         self.flakes = make_flakes()
         # 눈은 6번째 사진(앙상한 나무)부터
         for f in self.flakes:
