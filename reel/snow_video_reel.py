@@ -54,9 +54,13 @@ class Reel(pl.Reel):
         self.video_path = video
         self.vf = None
         self.flakes = []                       # 진짜 눈이 있으니 그래픽 눈은 끔
-        self.step = INTRO / len(self.photos)   # 사진 한 장당 시간
+        # 첫 장면은 사진(0~1마디), 이후 끝까지 눈 영상
+        self.fb_start, self.fb_end = 0.0, BAR
+        self.step = (self.fb_end - self.fb_start) / len(self.photos)
+        self.fade = 0.3
 
     def photo_frame(self, t):
+        t = max(0.0, t - self.fb_start)
         n = len(self.photos)
         idx = min(int(t // self.step), n - 1)
         im = self.photos[idx]
@@ -68,12 +72,17 @@ class Reel(pl.Reel):
 
     def background(self, t):
         if self.vf is None:
-            self.vf = VideoFrames(self.video_path, DUR - INTRO + 0.5)
-        if t < INTRO - 0.4:
-            return self.photo_frame(t)
+            # 플래시백 동안은 영상을 멈춰 두므로, 영상은 그 시간을 뺀 길이로 늘린다
+            self.vf = VideoFrames(self.video_path, DUR - (self.fb_end - self.fb_start) + 0.5)
+        a, b, f = self.fb_start, self.fb_end, self.fade
+        if a <= t < b - f:                     # 플래시백: 영상 일시정지
+            photo = self.photo_frame(t)
+            if a > 0 and t < a + f:            # 눈 → 사진 디졸브
+                return Image.blend(self.vf.last.convert("RGBA"), photo, ease((t - a) / f))
+            return photo
         v = self.vf.next().convert("RGBA")
-        if t < INTRO:                          # 사진 → 눈 영상 디졸브
-            return Image.blend(self.photo_frame(t), v, ease((t - (INTRO - 0.4)) / 0.4))
+        if b - f <= t < b:                     # 사진 → 눈 디졸브
+            return Image.blend(self.photo_frame(t), v, ease((t - (b - f)) / f))
         return v
 
     def frame(self, t):
